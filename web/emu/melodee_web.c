@@ -227,9 +227,7 @@ static void web_power_on(void)
     persist_boot();
     settings_init();
     lcd_init();
-    lcd_fill(0, 0, 240, 240, T_BG);
-    draw_text_box(0, 94, 240, &AF_L, "MELODEE", T_THEME, 1);
-    draw_text_box(0, 134, 240, &AF_S, "MULTI-ENGINE SYNTH", T_MID, 1);
+    splash_draw();
     memset(&melodee_dbg, 0, sizeof melodee_dbg);
     melodee_dbg.magic = DBG_MAGIC;
     fm1_input_init();
@@ -240,7 +238,7 @@ static void web_power_on(void)
     audio_init();
     glo_restore();
     project_boot();
-    web_boot_ms = fm1_ms + 430u;         /* main.c: 30 + 400 ms before the first frame */
+    web_boot_ms = fm1_ms + SPLASH_MS;    /* main.c: the splash stays SPLASH_MS, then the first frame */
     web_booted = 1;
 }
 

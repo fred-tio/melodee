@@ -149,6 +149,7 @@ static void melodee_init(void)
 static void fm1_main(void)
 {
     int32_t knob = 512 * 16;
+    uint32_t splash_t;
     persist_boot();
 #if MELODEE_OTA
     if (flash_ok)
@@ -156,9 +157,8 @@ static void fm1_main(void)
 #endif
     settings_init();
     lcd_init();
-    lcd_fill(0, 0, 240, 240, T_BG);
-    draw_text_box(0, 94, 240, &AF_L, "MELODEE", T_THEME, 1);
-    draw_text_box(0, 134, 240, &AF_S, "MULTI-ENGINE SYNTH", T_MID, 1);
+    splash_draw();
+    splash_t = fm1_ticks();                             /* (TIMER5's fm1_ms starts later) */
     if (melodee_dbg.magic != DBG_MAGIC) {
         memset(&melodee_dbg, 0, sizeof melodee_dbg);
         melodee_dbg.magic = DBG_MAGIC;
@@ -202,7 +202,8 @@ static void fm1_main(void)
     }
     glo_restore();                            /* CLK TUNE MIDI ROUT as last used, */
     project_boot();                           /* then the BOOT project or the template (theirs win) */
-    fm1_delay_ms(400);
+    while (fm1_ticks() - splash_t < SPLASH_MS * 1000u * FM1_TICKS_PER_US)
+        fm1_wdt_feed();
     lcd_fill(0, 0, 240, 240, T_BG);
 
     for (;;) {

@@ -437,9 +437,9 @@ async function switchOn() {
   try {
     const ac = new AudioContext({ sampleRate: 44100, latencyHint: "interactive" });
     const [wasm, sectors] = await Promise.all([
-      fetch("melodee.wasm").then((r) => { if (!r.ok) throw new Error(`melodee.wasm: ${r.status}`); return r.arrayBuffer(); }),
+      fetch("melodee.wasm", { cache: "no-cache" }).then((r) => { if (!r.ok) throw new Error(`melodee.wasm: ${r.status}`); return r.arrayBuffer(); }),
       loadFlash(),
-      ac.audioWorklet.addModule("worklet.js")]);
+      ac.audioWorklet.addModule(`worklet.js?t=${Date.now()}`)]);   // (addModule takes no cache option)
     if (sectors === null) noSaves();
     node = new AudioWorkletNode(ac, "melodee", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
     node.connect(ac.destination);

@@ -9,7 +9,8 @@
 # -ffp-contract=off: no fused multiply-adds, as the host build. EMU_OPT replaces -O2, EMU_CFLAGS adds flags.
 set -e
 cd "$(dirname "$0")/../.."
-[ -f build/gen/melodee_tables.h ] && [ -f build/gen/ui_fonts.h ] && [ -f build/gen/x0x_drum_tables.h ] ||
+[ -f build/gen/melodee_tables.h ] && [ -f build/gen/ui_fonts.h ] && [ -f build/gen/ui_splash.h ] &&
+    [ -f build/gen/x0x_drum_tables.h ] ||
     { echo "emu: run ./build.sh once first (build/gen)"; exit 1; }
 command -v emcc >/dev/null 2>&1 || { echo "emu: no emcc (brew install emscripten)"; exit 1; }
 VERSION=$(sed -n 's/^#define MELODEE_VERSION "\([^"]*\)".*/\1/p' firmware/src/melodee.c)

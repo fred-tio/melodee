@@ -4197,13 +4197,27 @@ static int test_bughunt_ui2(void)
 /* L is a sparse face (tools/gen_aa_font.py L_CHARS): every string drawn in it has all its glyphs */
 static int test_large_face(void)
 {
-    static const char *const FIXED[] = {"MELODEE", "0123456789", "C#4 / .."};   /* main.c, ui_menu.c; ui_draw.c draw_uboot */
+    static const char *const FIXED[] = {"0123456789", "C#4 / .."};   /* ui_menu.c; ui_draw.c draw_uboot */
     uint32_t i, missing = 0;
     const char *s;
     for (i = 0; i < NB + NE + sizeof FIXED / sizeof FIXED[0]; i++)                              /* ui_input.c setup_show: the control names */
         for (s = i < NB ? B_NAME[i] : i < NB + NE ? E_NAME[i - NB] : FIXED[i - NB - NE]; *s; s++)
             missing += glyph_at(&AF_L, (uint8_t)*s) < 0;
     return check("the L face holds every glyph of the strings drawn in it", !missing);
+}
+
+/* the power-on picture (ui_draw.c splash_draw): every pixel of SPLASH_PX a 2 x 2 block in its colour, the screen full */
+static int test_splash(void)
+{
+    uint32_t x, y, wrong = 0;
+    screen_clear();
+    splash_draw();
+    for (y = 0; y < 240u; y++)
+        for (x = 0; x < 240u; x++) {
+            uint8_t b = SPLASH_PX[(y / 2u * SPLASH_W + x / 2u) / 2u];
+            wrong += host_screen[y * 240u + x] != swap16(SPLASH_PAL[x / 2u % 2u ? b & 15u : b >> 4]);
+        }
+    return check("splash: the picture at 2x on the whole screen", !wrong);
 }
 
 #if MELODEE_FM4
@@ -4771,6 +4785,7 @@ int main(void)
     setvbuf(stdout, NULL, _IONBF, 0);
     int bad = test_prophet_pages();
     bad += test_large_face();
+    bad += test_splash();
     bad += test_home_notes();
     bad += test_stage();
     bad += test_capture();

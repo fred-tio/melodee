@@ -24,6 +24,10 @@ runs Felucca.
 - Editor: [web editor](https://keremimo.github.io/melodee/webapp/editor/)
 - Build: [BUILDING.md](BUILDING.md)
 
+## Not yet released
+
+- **New splash screen:** the Funky Monkey band greets you at power-on and stays for 1.5 s.
+
 ## What's new in 1.1.0
 
 The minor release carries forward 1.0.2's native synth motion, pattern operations and UI fixes,

@@ -56,7 +56,9 @@ const d = await device();
 d.run(200);
 const splash = d.screen();
 check("splash: drawn, HOME LED still dark", new Set(splash).size > 2 && !(d.ex.web_lit_buttons() >> B.HOME & 1));
-d.run(1000);
+d.run(1250);
+check("splash: still there at 1.45 s", !differ(d.screen(), splash) && !(d.ex.web_lit_buttons() >> B.HOME & 1));
+d.run(250);
 const home = d.screen();
 check("HOME: the screen changed after the splash, the HOME LED lit",
   differ(home, splash) && (d.ex.web_lit_buttons() >> B.HOME & 1) === 1);

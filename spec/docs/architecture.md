@@ -93,7 +93,8 @@ SPL ──► _start (crt0.S) ──► fm1_cstart (main.c)
                             fm1_main
                               persist_boot, settings, LCD + splash, input/ADC/panel,
                               melodee_init (default tracks), start CPU1 worker, audio,
-                              USB, UART MIDI, 10 kHz timer, IRQs on, restore project
+                              USB, UART MIDI, 10 kHz timer, IRQs on, restore project,
+                              wait until the splash has shown 1.5 s (SPLASH_MS)
                               ▼
                             main loop (~15 ms)
 ```
