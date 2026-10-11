@@ -313,5 +313,13 @@ if command -v node >/dev/null 2>&1; then
 else
     echo "== skip web tests (no node)"
 fi
+if command -v node >/dev/null 2>&1 && command -v emcc >/dev/null 2>&1; then
+    mkdir -p build/emu
+    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o build/emu/native_check web/emu/native_check.c -lm
+    run "browser build (WebAssembly): boot, panel, MIDI, saves, native samples bit for bit, cost" sh -c \
+        'web/emu/build.sh && build/emu/native_check build/emu/native.f32 && node web/emu/emu_test.mjs build/emu/melodee.wasm build/emu/native.f32'
+else
+    echo "== skip browser build (no emcc: brew install emscripten)"
+fi
 
 [ $fail -eq 0 ] && echo "ALL HOST TESTS PASSED" || { echo "HOST TESTS FAILED"; exit 1; }
