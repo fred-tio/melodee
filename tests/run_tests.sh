@@ -31,6 +31,9 @@
 # CHORD (tests/chord_test.c): the chord keys (src/chord.c): diatonic triads / sevenths of several scales and roots,
 #                   the fixed shapes and voicings (at most 4 notes), names, MONO plays the root, a release ends
 #                   exactly what its key / MIDI note started, recording, the ARP, MIDI IN, kits ignore CHRD.
+# HUM (tests/humanize_test.c): humanize (src/humanize.c): the velocity curve and jitter, accents, HUM 0 inert, +-30 ms
+#                   early and late (a quarter of the shortest step at most), chords together, ties, gate, the arp,
+#                   step chance and the arp's RANDOM unchanged (its own generator), timed notes (recording.c).
 # MOD (tests/mod_test.c): the modulation matrix: slots that do nothing are bit-identical, every source on each
 #                   kind of destination, clamping, MIDI CC1 / CC11 / aftertouch routing, the cost of 4 active
 #                   slots (at most +5 %), demos in build/mod_demo/.
@@ -240,6 +243,8 @@ if [ -f build/gen/melodee_tables.h ]; then
     run "SLICER: no clicks, timing, sync with the sequencer, STUT, cost, demos" "$OUT/slicer_test" build/slicer_demo
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/swing_test" tests/swing_test.c -lm
     run "SWING: track + global at most 100, sequencer and SLICER step lengths, the SWG display" "$OUT/swing_test"
+    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/humanize_test" tests/humanize_test.c -lm
+    run "HUM: velocity curve and jitter, accents, +-30 ms early and late, no swap, gate, the arp, own generator" "$OUT/humanize_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/perform_test" tests/perform_test.c -lm
     mkdir -p build/perform_demo build/fx_demo
     run "FX layer effects: on the 1/16, stereo, too-long REPEAT, SLICER, silent keys, idle bit-identical, clicks, OCT UP / DN, cost, demos" "$OUT/perform_test" build/perform_demo build/fx_demo

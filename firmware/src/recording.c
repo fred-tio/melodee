@@ -254,19 +254,33 @@ static void recording_release(track_t *t, uint32_t note)
         if (recording[i].note == note && (recording_flags[i] & 1u))
             recording_finish(i);
 }
+/* HUM: the phase of the loop at which timed note i plays this pass: its own, moved by its step's offset, inside
+ * the loop (a note at its start is never early, one at its end never late) */
+static uint32_t recording_hum_on(const track_t *t, uint32_t i, uint32_t loop, uint32_t amp)
+{
+    int32_t on;
+    if (!amp)
+        return recording_due[i];
+    on = (int32_t)recording_due[i] + hum_timed(t, recording_view(t, &recording[i]), amp);
+    return (uint32_t)clamp(on, 0, (int32_t)loop - 1);
+}
 static void recording_fire(track_t *t, uint32_t i, uint32_t period, uint32_t late)
 {
     recorded_note_t *r = &recording[i];
+    const step_t *s = &t->step[recording_view(t, r)];
+    uint32_t lane = drum_lane(r->note);
+    int acc = (s->flags & SF_ACCENT) || (DRUM_LANE_NOTE[lane] == r->note && ((s->hit & s->acc) >> lane & 1u));
     if (recording_flags[i] & 4u) return;
     recording_flags[i] |= 4u;
     if ((recording_flags[i] & 2u)) { recording_flags[i] &= (uint8_t)~2u; return; }
     if ((recording_flags[i] & 1u)) return;
-    uint32_t chance = step_chance(&t->step[recording_view(t, r)]);
+    uint32_t chance = step_chance(s);
     if (chance < 100u && rng() % 100u >= chance) return;
     uint32_t gate = (uint32_t)(((uint64_t)r->duration << (r->owner >> 5)) * period / RECORD_UNIT);
     if (!gate) gate = 1;
+    gate = hum_gate(t, gate);
     drum_event_pitch=r->pitch; drum_event_length=r->length?gate:0;
-    trk_note_on(t, r->note, r->vel);
+    trk_note_on(t, r->note, hum_vel(r->vel, hum_ahead_s16(t, (int32_t)(recording_due[i] - recording_prefix(t, period, t->seq_idx))), acc));
     drum_event_pitch=0; drum_event_length=0;
     uint32_t was = recording_run[i].left != 0;
     recording_run[i].left = gate > late ? gate - late : 0u;
@@ -280,11 +294,13 @@ static void recording_zero(track_t *t)
 {
     uint32_t period = seq_div_samples((uint32_t)t->p[P_SDIV]);
     uint32_t phase = recording_prefix(t, period, t->seq_idx) + t->seq_pos;
+    uint32_t loop = recording_loop(t, period), amp = hum_amp(t, swing_step_len(t, period, 1u));
     recording_sync(t, period);
+    hum_pass[trk_index(t)]++;
     for (uint32_t i = recording_head[recording_owner(t)]; i < RECORD_MAX; i = recording_next[i]) {
         recording_flags[i] &= (uint8_t)~4u;
         if (recording_active(t, i)) {
-            uint32_t on = recording_due[i];
+            uint32_t on = recording_hum_on(t, i, loop, amp);
             if (on <= phase) recording_fire(t, i, period, phase - on);
         }
     }
@@ -296,6 +312,7 @@ static void recording_tick(track_t *t, uint32_t n)
     uint64_t ticks = (uint64_t)n * RECORD_UNIT + recording_fraction[tr];
     recording_fraction[tr] = (uint32_t)(ticks % period);
     uint32_t elapsed = (uint32_t)(ticks / period);
+    uint32_t loop = recording_loop(t, period), amp = hum_amp(t, swing_step_len(t, period, 1u));
     recording_sync(t, period);
     for (uint32_t i = recording_head[recording_owner(t)]; i < RECORD_MAX; i = recording_next[i]) {
         if ((recording_flags[i] & 1u)) recording_run[i].held = (uint32_t)clamp((int32_t)(recording_run[i].held + elapsed), 0, 8388607);
@@ -305,7 +322,7 @@ static void recording_tick(track_t *t, uint32_t n)
             } else recording_run[i].left -= n;
         }
         if (!(recording_flags[i] & 4u) && recording_active(t, i)) {
-            uint32_t on = recording_due[i];
+            uint32_t on = recording_hum_on(t, i, loop, amp);
             if (on > a && on <= b) recording_fire(t, i, period, b - on);
         }
     }

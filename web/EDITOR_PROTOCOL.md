@@ -369,6 +369,11 @@ grid lives in the steps themselves, so every engine has it:
   → the selected track; what projects stored before), 1 "SEL" (every channel → the selected track). The
   id, `G_COUNT` (27) and the project format are unchanged; it is saved and loaded with the project like
   the other globals. The editor shows it under GLOBAL > SYSTEM.
+  `G_HUM` (id 23, label "HUM", `F_PCT` 0..100, default 0, SEQ > TEMPO) was `G_INITSND` (label "INIT", `N_GO`
+  0..1), an action of the removed TOOLS page that never set its value: every saved project holds 0 there, HUM's
+  default. The id, `G_COUNT` (27) and the project format are unchanged (ADR 0002). The editor shows id 23 on its
+  TEMPO page; firmware before HUM describes it as "INIT", which the editor hides. Id 22 (`G_CLRSEQ`, "CLRSQ")
+  stays inert.
 - **Sound loads and undo.** A load that changes a track's sound (`PRESET`, `SET` of `G_ENGSEL`, `UP_LOAD`,
   and the same on the device) changes the sound only: the engine and the parameters of the sound. It
   never changes the steps, nor the track's own parameters: `P_LEVEL`, `P_PAN`, `P_MUTE` (0, 39, 40), the

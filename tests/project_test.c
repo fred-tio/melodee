@@ -501,6 +501,14 @@ int main(void)
             ok &= proj_import(&c, v7, sizeof v7) && c.g[G_RTYPE] == 1;
             bad += check("FUN7 REVERB TYPE above SPRING (an old drum channel): ROOM", ok);
         }
+        {   /* HUM (id 23, was INIT: an action, never set, so every device saved 0 there): HUM 0 % (ADR 0002) */
+            int16_t g23 = 0;
+            memcpy(v7 + 8u + 2u * G_HUM, &g23, 2);
+            sum = proj_hash(v7, PROJ_STORE_V7 - 4u);
+            memcpy(v7 + PROJ_STORE_V7 - 4u, &sum, 4);
+            bad += check("FUN7 with 0 in id 23 (INIT, never set): HUM 0 %",
+                         proj_import(&c, v7, sizeof v7) && c.g[G_HUM] == 0 && GP[G_HUM].def == 0);
+        }
         ok = proj_import(&c, v7, sizeof v7 - 1u);
         bad += check("FUN7 one byte short: refused", !ok);
         /* the retained cache after an update: slot 1's FUN7 record, longer slot, garbage after it */

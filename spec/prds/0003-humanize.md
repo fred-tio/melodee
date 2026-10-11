@@ -1,9 +1,9 @@
 # PRD 0003: Humanize
 
-- Status: draft
+- Status: built (M1–M4); M5 (listening test) open
 - Date: 2026-10-11
 - Owner: Frederik
-- Decision record: none yet
+- Decision record: [ADR 0002](../adrs/0002-humanize-reuses-global-id-23.md)
 
 ## Problem
 
@@ -41,8 +41,8 @@ small random note length changes. At 0 % Melodee plays exactly as it does today.
 
 - **Control:** one global parameter, HUM, 0–100 %, in the free fourth slot of the TEMPO page
   ([params.c](../../firmware/src/params.c) page table). Saved with the project. Default 0 %.
-- **Sources:** the sequencer steps of all four tracks (DRUM track and drum lane hits included) and the
-  arpeggiator.
+- **Sources:** the sequencer steps of all four tracks (DRUM track and drum lane hits included), their timed notes
+  (live recording, Capture, edited notes and hits: `recording.c`) and the arpeggiator.
 - **Velocity curve per bar:** a fixed shape from the note's place in the global 4/4 bar. Strongest to softest:
   beat 1, beat 3, beats 2 and 4, the 8th off-beats, the 16th off-beats. HUM scales the depth of the curve.
 - **Velocity jitter:** a random change per note, on top of the curve.
@@ -53,7 +53,8 @@ small random note length changes. At 0 % Melodee plays exactly as it does today.
 ### Out of scope (v1)
 
 - Live keys, MIDI IN and the panel's MIDI OUT. They play as today.
-- Recording. Recorded steps keep the velocity and timing you played; humanize never writes into the pattern.
+- Recording. Recorded notes keep the velocity and timing you played in the pattern; humanize never writes into it
+  and is off for a track while it records. Their playback is humanized (see Sources).
 - The metronome ([click.c](../../firmware/src/click.c)). It stays on the grid.
 - Separate amounts for timing, velocity and gate.
 - A per-track amount.
@@ -77,11 +78,11 @@ small random note length changes. At 0 % Melodee plays exactly as it does today.
 | F1 | The TEMPO page shows HUM in its fourth slot, 0–100 %, default 0 %. |
 | F2 | HUM is saved and loaded with the project. A project saved before this feature loads with HUM 0 %. |
 | F3 | At HUM 0 % the audio output is bit for bit the same as before the feature (`tests/golden.txt` unchanged). |
-| F4 | Velocity curve at 100 %: beat 1 keeps the step's velocity; the 16th off-beats are 25 lower; the other positions lie between, in the order of the Scope section. HUM scales the curve linearly. |
-| F5 | Velocity jitter at 100 %: up to ±25 per note, uniform. HUM scales it linearly. The result stays in 1..127. |
+| F4 | Velocity curve at 100 %: beat 1 keeps the step's velocity; the 16th off-beats are 50 lower; the other positions lie between, in the order of the Scope section. HUM scales the curve linearly. |
+| F5 | Velocity jitter at 100 %: up to ±30 per note, uniform. HUM scales it linearly. The result stays in 1..127. |
 | F6 | An accented step and an accented drum hit stay at 127 minus a small downward jitter only (at most 6 at 100 %). The curve does not apply to them. |
 | F7 | Steps with a recorded velocity or the default velocity get the curve and the jitter. |
-| F8 | Timing at 100 %: each step's notes start up to ±20 ms from the grid, uniform. HUM scales it linearly. |
+| F8 | Timing at 100 %: each step's notes start up to ±30 ms from the grid, uniform. HUM scales it linearly. |
 | F9 | The timing offset is at most a quarter of the step's length (after swing), so steps never swap order or overlap. |
 | F10 | All notes and drum hits of one step get the same timing offset. Each note gets its own velocity jitter. |
 | F11 | Gate at 100 %: the note length changes by up to ±10 % of the gate, uniform. Ties and slides stay legato. |
@@ -120,7 +121,7 @@ small random note length changes. At 0 % Melodee plays exactly as it does today.
 
 | Risk | Mitigation |
 | --- | --- |
-| Early notes need the sequencer to trigger before the step starts. Today it triggers exactly at the step boundary. | Schedule each step's note-on up to 20 ms ahead. Hold F9's quarter-step limit. Test the order of note-ons at the shortest step length. |
+| Early notes need the sequencer to trigger before the step starts. Today it triggers exactly at the step boundary. | Schedule each step's note-on up to 30 ms ahead. Hold F9's quarter-step limit. Test the order of note-ons at the shortest step length. |
 | No free global parameter id: `G_COUNT` is fixed by the formats and the protocol. | Reuse an inert id (as `G_A4`, `G_RTYPE` and `G_DTYPE` did) or migrate the format. Decide in an ADR (Q2). |
 | Humanize on the shared `rng()` would change step chance and arp random results. | Own generator (Q3). |
 | With an external clock, the next step time is a prediction. An early note can come before a tempo change shows. | Use the clock's predicted step length, as the slicer and arp do. Accept a small error. |
@@ -133,8 +134,12 @@ small random note length changes. At 0 % Melodee plays exactly as it does today.
 - Velocity curve: fixed beat accents plus random jitter per note (2026-10-11).
 - Accents stay loud; recorded and default velocities get the curve and jitter (2026-10-11).
 - Timing: early and late, centred on the grid (2026-10-11).
-- 100 % means ±20 ms timing and ±25 velocity jitter; the curve's deepest dip is 25 (2026-10-11).
+- 100 % means ±20 ms timing and ±25 velocity jitter; the curve's deepest dip is 25 (2026-10-11). Replaced below.
+- After the first listening test (808 KIT, CZ-1 ELEC.BASS 1, ELEC.PIANO; barely audible even at 100 %): 100 % means
+  ±30 ms timing and ±30 velocity jitter; the curve dips 12 (beat 3), 24 (beats 2 and 4), 36 (8th off-beats) and
+  50 (16th off-beats). The old dip of 25 was about −2 dB on the 808 (2026-10-11).
 - Sources: the sequencer on all four tracks and the arpeggiator. Not live keys, MIDI IN or recording (2026-10-11).
+  Timed notes added below.
 - All notes of one step share one timing offset (2026-10-11).
 - The variation is new on every pass (2026-10-11).
 - Gate humanize is in v1. Phrase accent and per-track feel are later (2026-10-11).
@@ -142,7 +147,12 @@ small random note length changes. At 0 % Melodee plays exactly as it does today.
 - HUM is saved with the project, default 0 % (2026-10-11).
 - The beat curve uses the note's place in the global 4/4 bar, not the track's step number, so polymeter and DIV
   work (2026-10-11).
+- Timed notes (live recording, Capture, edited notes and hits) are humanized as they play, like steps: velocity,
+  timing and gate. Their stored onsets stay. The offset comes from a hash of the step and the loop pass, so a step's
+  notes move together; a note at the loop's start is never early, one at its end never late (2026-10-11).
 
 ## Open questions
 
 - The exact curve values for beats 2/4 and the 8th off-beats. Tune by ear in M5.
+- ELEC.BASS 1 (CZ-1) ignores velocity (amp velocity sense 0): only timing and gate reach it. Engine velocity response
+  is out of scope here.

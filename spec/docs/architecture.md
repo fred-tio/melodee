@@ -47,7 +47,7 @@ Group files include their members:
 | Group file | Includes |
 | --- | --- |
 | `engines.c` | `dsp.c`, every `eng_*.c`, `resources.c` |
-| `seq.c` | chord, motion, recording, click, seq_erase, midi_control, midi_clock |
+| `seq.c` | chord, motion, humanize, recording, click, seq_erase, midi_control, midi_clock |
 | `fx.c` | perform, delay |
 | `usb.c` | usb_audio_stream, usb_audio |
 | `ui.c` | favorites, screen, scale_picker, browse, seq_edit, seq_notes, seq_undo |
@@ -125,6 +125,11 @@ engines (eng_*.c) ──► per-track post, slicer.c ──► fx.c (DIST, choru
                                                          perform.c FX layer) ──► mix ──► I2S
                                                                               └──► USB audio stems
 ```
+
+The step clock (`seq_idx`, `seq_pos`) always runs on the grid. Recording, motion, the SLICER and the UI read it.
+Humanize (HUM, `humanize.c`, PRD 0003) moves only when a step's notes play: a late step waits, an early one plays
+before the clock reaches its step. Timed notes (`recording.c`) play when their phase of the loop comes; humanize
+shifts that phase. Step chance still rolls on the grid. Humanize has its own random generator.
 
 ### Engines
 

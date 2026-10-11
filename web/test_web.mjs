@@ -330,6 +330,18 @@ async function editorMock() {
       "editor: MIDI IN routing (ROUT CH1-4 / SEL, global id 14)");
   }
   {
+    /* SEQ > TEMPO HUM (G_HUM 23, was G_INITSND "INIT"): 0..100 %, default 0; G_COUNT unchanged. The editor's TEMPO page
+     * lists id 23; on firmware before HUM its label is "INIT", which G_SKIP hides */
+    const hd = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 23)));
+    const h1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 23, 150)));
+    const hg = E.parse[E.CMD.DUMP](await rq(E.req.dump()), info).g[23];
+    const h0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 23, 0)));
+    const skip = /const G_SKIP = new Set\(\[([^\]]*)\]/.exec(html)?.[1] ?? "";
+    ok(hd.label === "HUM" && hd.min === 0 && hd.max === 100 && hd.def === 0 && h1.value === 100 && hg === 100 && h0.value === 0 &&
+       info.gcount === 27 && /\["TEMPO", 1, \[0, 1, 23\]\]/.test(html) && skip.includes('"INIT"') && !skip.includes('"HUM"'),
+      "editor: HUM on SEQ > TEMPO (global id 23, hidden as INIT on old firmware)");
+  }
+  {
     /* FX > REVERB TYPE (G_RTYPE 24, the old drum channel's id): ROOM (0, the default) / SPRING (1) / HALL (2); G_COUNT unchanged */
     const rd = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 24)));
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 10)));

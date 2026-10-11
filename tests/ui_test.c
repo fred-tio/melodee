@@ -3046,7 +3046,7 @@ static int test_boot_template(void)
     return bad;
 }
 
-/* BPM and SWG: SEQ > TEMPO, the project's (saved and loaded with it); SELECT never sets the BPM: it turns the open
+/* BPM, SWG and HUM: SEQ > TEMPO, the project's (saved and loaded with it); SELECT never sets the BPM: it turns the open
  * section's pages both ways (wrapping) and moves the cursor on STEP */
 static int test_tempo_select(void)
 {
@@ -3070,17 +3070,22 @@ static int test_tempo_select(void)
     bad += check("SELECT on NOTES turns the page (and back); KNOB 1 moves through the steps",
                  ok && ui.cursor == 7u && str_eq(cur_page()->title, "NOTES"));
     go_title("TEMPO");
+    ok = song.g[G_HUM] == 0 && cur_page()->id[3] == G_HUM;
     turn(EN_K1, 4);
     turn(EN_K2, 10);
-    ok = song.g[G_BPM] == 124 && song.g[G_SWING] == 10 && cur_page()->fam == FAM_SEQ;
+    turn(EN_K4, 30);
+    int16_t hum = song.g[G_HUM];
+    ok &= song.g[G_BPM] == 124 && song.g[G_SWING] == 10 && hum > 0 && hum <= 100 && cur_page()->fam == FAM_SEQ;
     memset(proj_slot, 0, sizeof proj_slot);
     memset(proj_bank_slot, 0, sizeof proj_bank_slot);
     project_save(2);
     song.g[G_BPM] = 90;
     song.g[G_SWING] = 0;
+    song.g[G_HUM] = 0;
     project_load(2);
-    bad += check("SEQ > TEMPO: BPM and SWG, saved and loaded with the project", ok && song.g[G_BPM] == 124 &&
-                 song.g[G_SWING] == 10);
+    bad += check("SEQ > TEMPO: BPM, SWG and HUM (KNOB 4, default 0 %), saved and loaded with the project",
+                 ok && song.g[G_BPM] == 124 && song.g[G_SWING] == 10 && song.g[G_HUM] == hum);
+    song.g[G_HUM] = 0;
     memset(proj_slot, 0, sizeof proj_slot);
     memset(proj_bank_slot, 0, sizeof proj_bank_slot);
     return bad;

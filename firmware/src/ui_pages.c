@@ -161,7 +161,7 @@ static const int8_t PV_DOT[33][2] = {
 /* a ring's words as the mockups write them: its label in full ("OCT" -> "OCTAVES", when it fits), a name value in
  * sentence case ("SAW" -> "Saw"; numbers and notes as they are), a unit in lower case ("STEP" -> "steps") */
 static const struct { const char *k, *w; } PV_LABEL[] = {
-    {"OCT", "OCTAVES"}, {"LEN", "LENGTH"}, {"DIV", "DIVISION"}, {"SWG", "SWING"}, {"SLCR", "SLICER"}, {"PAT", "PATTERN"},
+    {"OCT", "OCTAVES"}, {"LEN", "LENGTH"}, {"DIV", "DIVISION"}, {"SWG", "SWING"}, {"HUM", "HUMANIZE"}, {"SLCR", "SLICER"}, {"PAT", "PATTERN"},
     {"DTN", "DETUNE"}, {"NOIS", "NOISE"}, {"CUT", "CUTOFF"}, {"DRV", "DRIVE"}, {"ATK", "ATTACK"}, {"DEC", "DECAY"},
     {"SUS", "SUSTAIN"}, {"REL", "RELEASE"}, {"FDBK", "FEEDBACK"}, {"DPTH", "DEPTH"}, {"VOIC", "VOICING"}, {"QNT", "QUANTIZE"}};
 static void pv_words(const char *label, const char *val, const char *unit, char *lb, char *v, char *u)

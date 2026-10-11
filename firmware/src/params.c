@@ -233,7 +233,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_ENGSEL] = PE("ENG", N_ENGNAME, 0),
     [G_A4] = {"A4", F_INT, A4_MIN, A4_MAX, A4_DEFAULT, 0, "Hz"},
     [G_CLRSEQ] = PE("CLRSQ", N_GO, 0),
-    [G_INITSND] = PE("INIT", N_GO, 0),
+    [G_HUM] = PD("HUM", F_PCT, 0, 100, 0),
     /* the reverb's model on the REVERB page: the id of the old GM drum channel (G_DRCH, inert since 1.0) */
     [G_RTYPE] = PE("TYPE", N_RTYPE, 0),
     /* the delay's TYPE and WEAR on the DLY 2 page: the ids of the old GM drum part's level and reverb send */
@@ -538,7 +538,7 @@ static const page_t PAGES[] = {
     {"ARP 2", FAM_ARP, SC_TRACK, GR_NONE, {P_ASWING, P_APROB, P_AHOLD, P_AORDER}},
     {"NOTES", FAM_SEQ, SC_STEP, GR_ROLL, {0, 1, 2, 3}},
     {"PATTERN", FAM_SEQ, SC_TRACK, GR_STEPS, {P_SLEN, P_SDIV, P_SSWING, P_SGATE}},
-    {"TEMPO", FAM_SEQ, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_TRK_RECQ, 0xFF}},   /* the project's: saved with it; QNT: the
+    {"TEMPO", FAM_SEQ, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_TRK_RECQ, G_HUM}},  /* the project's: saved with it; QNT: the
                                                                                   * selected track's (TIMING's, folded in) */
     {"MIXER", FAM_TRK, SC_TRK, GR_TRK, {0, 1, 2, 3}},   /* GLO button; LEVEL PAN REV MUTE */
     {"PATTERNS", FAM_SEQ, SC_GLOBAL, GR_PATGRID, {0xFF, 0xFF, 0xFF, 0xFF}},   /* the 4 x 8 grid: KNOB k track k's (ui_stage.c) */

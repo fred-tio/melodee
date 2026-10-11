@@ -109,7 +109,9 @@ enum {                          /* global parameters */
     G_SLOT, G_BOOT, G_LOAD, G_SAVE,   /* G_BOOT (was G_NAME, unused): a device setting (settings_boot), not song.g */
     G_ENGSEL, G_A4,            /* the editor switches the engine with a SET of G_ENGSEL; G_A4 reuses the unused
                                  * G_ENGGO id, reads tuning_a4 instead of song.g (ids/count stay fixed) */
-    G_CLRSEQ, G_INITSND,
+    G_CLRSEQ, G_HUM,            /* G_CLRSEQ: inert (the TOOLS page's action, gone). G_HUM: HUMANIZE, 0..100 %
+                                 * (humanize.c); was G_INITSND, an action that never set song.g: every saved project
+                                 * holds 0 there, HUM's default (ADR 0002) */
     G_RTYPE,                    /* REVERB TYPE: 0 ROOM, 1 SPRING, 2 HALL (fx.c). Was G_DRCH, the GM drum part's MIDI
                                  * channel (inert since 1.0, never read); projects of formats before FUN7 load it
                                  * as ROOM (project.c proj_rtype_room) */

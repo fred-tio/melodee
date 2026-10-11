@@ -1006,15 +1006,6 @@ static void act_do(void)
         else
             name_open(NK_PROJ_SAVE, k);
         break;
-    case G_CLRSEQ:
-        if (chain_busy()) { ui_message("STOP TO EDIT"); break; }
-        confirm_open(CF_CLEAR_SEQ, song.sel);
-        break;
-    default:                                              /* G_INITSND */
-        sound_init_of(TSEL, TSEL->eng_req);               /* the engine's INIT (the steps stay) */
-        ui_message("SOUND INIT");
-        ui.force = 1;
-        break;
     }
 }
 

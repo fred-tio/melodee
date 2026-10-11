@@ -27,6 +27,13 @@ runs Felucca.
 ## Not yet released
 
 - **New splash screen:** the Funky Monkey band greets you at power-on and stays for 1.5 s.
+- **Humanize:** **HUM** on **SEQ > TEMPO** (KNOB 4, 0–100 %) makes the sequencer and the arp sound played:
+  beat 1 strongest and the off-beat 16ths softest, small random changes of velocity, timing (up to ±30 ms)
+  and note length, new on every pass. Accents stay loud, a chord's notes start together. At 0 % (the
+  default, and every older project) the pattern plays exactly as before. Recorded and captured notes are
+  humanized too, but only as they play: the pattern keeps what you played. Live keys, MIDI IN and the
+  metronome are not humanized, and a track armed for recording plays on the grid. The web editor shows HUM
+  next to BPM and SWG.
 
 ## What's new in 1.1.0
 
@@ -280,7 +287,7 @@ user presets saved by earlier Melodee versions are not imported, and the user sa
 - **SELECT** turns the pages of the open section (both ways); **MASTER** sets the volume,
   **ALGORITHM** picks the track (T1–T4), and **PRESETS** browses its sounds. KNOB 1 moves across
   lists and grids, KNOB 2 moves down; on parameter pages KNOB 1–4 edit the four controls
-- **BPM**, the song's **SWG** and the selected track's playback **QNT** are on **SEQ > TEMPO**:
+- **BPM**, the song's **SWG**, the selected track's playback **QNT** and **HUM** (humanize) are on **SEQ > TEMPO**:
   the project's, saved and loaded with it (power-on: the BOOT project's, the template's or 120);
   GLO > GLOBAL keeps CLK and TUNE, the device's
 - FX, SCL, ENV, LFO, EDIT, GLO, SAVE, ARP and SEQ open their pages; press again for the next page.

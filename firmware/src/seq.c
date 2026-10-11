@@ -234,6 +234,7 @@ static void arp_off(track_t *t)                  /* the sounding arp note ends (
 /* n and gate_n: sample time (INT), musical units (MIDI); a stopped external
  * transport uses real time converted to musical units for a tapped note's gate. */
 static volatile uint32_t beat_pos, beat_n;      /* clock units into the beat, beat of the bar (0..3) */
+#include "humanize.c"
 static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 {
     uint32_t period, cnt, list[64], len = 0, i, j, o;
@@ -252,14 +253,20 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
     period = seq_div_samples((uint32_t)t->p[P_ARATE]);
     sw = t->p[P_ASWING] * (int32_t)period / 250;
     t->arp_pos += n;
-    if (t->arp_pos < period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw) && t->arp_pos != 0xFFFFFFF + n)
-        return;
-    if (t->arp_pos >= 0xFFFFFFFu)
-        t->arp_pos = 0;
-    else if (song.g[G_CLOCK])
-        t->arp_pos -= period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw);
-    else
-        t->arp_pos = 0;
+    {
+        struct hum_arp *h = &hum_arp[trk_index(t)];     /* HUM: from the last note's offset to the next one's */
+        uint32_t len = period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw) + (uint32_t)(h->next - h->cur);
+        if (t->arp_pos < len && t->arp_pos != 0xFFFFFFF + n)
+            return;
+        h->cur = t->arp_pos >= 0xFFFFFFFu ? 0 : h->next;
+        h->next = hum_shift(t, period - (uint32_t)sw);
+        if (t->arp_pos >= 0xFFFFFFFu)
+            t->arp_pos = 0;
+        else if (song.g[G_CLOCK])
+            t->arp_pos -= len;
+        else
+            t->arp_pos = 0;
+    }
     /* build the note list: held notes (sorted or as played) over OCT octaves */
     for (i = 0; i < t->nheld; i++)
         list[i] = t->held[i];
@@ -302,10 +309,10 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
         arp_off(t);
     if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]) {
         t->arp_note = (uint8_t)list[j];
-        t->arp_off = period * (uint32_t)t->p[P_AGATE] / 128u;
+        t->arp_off = hum_gate(t, period * (uint32_t)t->p[P_AGATE] / 128u);
         if (rec_on(t))
             rec_note(t, t->arp_note, 100);           /* recording: what the arp plays */
-        trk_note_on(t, t->arp_note, 100);
+        trk_note_on(t, t->arp_note, hum_vel(100, hum_beat_s16(), 0));
     }
 }
 
@@ -823,6 +830,7 @@ static void seq_start(void)
         t->rh_n = 0;
         cap_step[i] = 0xFFFFu;                     /* (capture: step 0 is the first) */
     }
+    memset(hum, 0, sizeof hum);
     cap_from = cap_w;                              /* capture and the jam log: this run */
     jam.n = 0;
     song.tick = 0;
@@ -854,6 +862,7 @@ static void seq_stop(void)
     seq_erase_request = 0;
     seq_erase_transport++;
     song.playing = 0;
+    memset(hum, 0, sizeof hum);                    /* (a late step waiting: dropped) */
     if (song.g[G_CLOCK])                           /* external clock: the arp stops with the transport, */
         for (i = 0; i < NPART; i++)                /* its sounding note too (HOLD keeps the latched chord) */
             if (trk[i].arp_note)
@@ -870,28 +879,26 @@ static void seq_stop(void)
     motion_end();
 }
 
-/* play one step: TIE extends, REST releases, NOTE (re)triggers its notes, then its lane hits (their GM
+/* play step idx (s): TIE extends, REST releases, NOTE (re)triggers its notes, then its lane hits (their GM
  * notes, DRUM_LANE_NOTE; an accented hit at 127); a SLIDE on the previous step makes this one legato with a
  * glide (acid style). skip: bit k = note k, bit 8 + l = the hit of lane l already sounds from live
- * recording (not triggered, not released here). */
-static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint32_t period, uint32_t skip)
+ * recording (not triggered, not released here). s16: its 16th in the bar (HUM's velocity curve) */
+static __attribute__((noinline)) void seq_play(track_t *t, const step_t *s, uint32_t period, uint32_t skip,
+                                               uint32_t idx, uint32_t s16)
 {
     if (s->flags & SF_RECORDED)
-        for (uint32_t r = recording_head[recording_owner(t)]; r < RECORD_MAX; r = recording_next[r]) if (recording_active(t, r) && recording_view(t, &recording[r]) == t->seq_idx) {
+        for (uint32_t r = recording_head[recording_owner(t)]; r < RECORD_MAX; r = recording_next[r]) if (recording_active(t, r) && recording_view(t, &recording[r]) == idx) {
             for (uint32_t k = 0; k < s->n; k++) if (s->note[k] == recording[r].note) skip |= 1u << k;
             for (uint32_t k = 0; k < NLANE; k++) if (DRUM_LANE_NOTE[k] == recording[r].note) skip |= 1u << (8u + k);
         }
     uint32_t i, j, gate = step_gate(s) ? period * step_gate(s) / 255u : period * (uint32_t)t->p[P_SGATE] / 128u;
-    uint32_t vel = (s->flags & SF_ACCENT) ? 127u : (s->vel ? s->vel : 96u);
+    uint32_t acc = (s->flags & SF_ACCENT) != 0, vel = acc ? 127u : (s->vel ? s->vel : 96u);
     uint32_t slide_in = t->seq_hold && t->seq_n;
     uint32_t len = t->p[P_SLEN] ? (uint32_t)t->p[P_SLEN] : 1u;
-    uint32_t next_tie = seq_steps(t)[(t->seq_idx + 1u) % len].time == ST_TIE;
+    uint32_t next_tie = seq_steps(t)[(idx + 1u) % len].time == ST_TIE;
     uint8_t nn[4 + NLANE], vv[4 + NLANE];           /* the notes it plays: its notes, then its hits */
     uint32_t m = 0, sk = 0;
-    if (step_chance(s) < 100u && rng() % 100u >= step_chance(s)) {
-        seq_release(t);
-        return;
-    }
+    gate = hum_gate(t, gate);
     if (s->time == ST_TIE) {
         if (t->seq_n) {
             t->seq_off = step_gate(s) ? gate : gate + period / 2u;
@@ -905,13 +912,13 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
     }
     for (i = 0; i < s->n && i < 4u; i++, m++) {
         nn[m] = s->note[i];
-        vv[m] = (uint8_t)vel;
+        vv[m] = (uint8_t)hum_vel(vel, s16, (int)acc);
         sk |= ((skip >> i) & 1u) << m;
     }
     for (i = 0; i < NLANE; i++)
         if ((s->hit >> i) & 1u) {
             nn[m] = DRUM_LANE_NOTE[i];
-            vv[m] = (uint8_t)((s->acc >> i) & 1u ? 127u : vel);
+            vv[m] = (uint8_t)((s->acc >> i) & 1u ? hum_vel(127u, s16, 1) : hum_vel(vel, s16, (int)acc));
             sk |= ((skip >> (8u + i)) & 1u) << m;
             m++;
         }
@@ -936,6 +943,77 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
     t->seq_hold = (s->flags & SF_SLIDE) != 0 || next_tie;   /* next step a TIE: keep the notes to it */
 }
 
+static int seq_roll(track_t *t, const step_t *s)   /* step chance: 0 = the step is silent (its notes end) */
+{
+    if (step_chance(s) < 100u && rng() % 100u >= step_chance(s)) {
+        seq_release(t);
+        return 0;
+    }
+    return 1;
+}
+
+/* play the step the clock is in, now */
+static void seq_step(track_t *t, const step_t *s, uint32_t period, uint32_t skip)
+{
+    if (seq_roll(t, s))
+        seq_play(t, s, period, skip, t->seq_idx, hum_s16(hum[trk_index(t)].tick));
+}
+
+static void hum_late(track_t *t, struct hum_step *h)   /* HUM: the late step waiting plays */
+{
+    h->pend = 0;
+    seq_play(t, &seq_steps(t)[h->idx], h->arg, h->skip, h->idx, h->s16);
+}
+
+/* HUM: the clock enters step seq_idx. Step chance rolls now, on the grid (the shared rng() as without HUM). Its notes
+ * play now, after its offset (a late step: hum_tick), or played already (an early one). Then the next one's offset */
+static void hum_enter(track_t *t, const step_t *s, uint32_t period, uint32_t arg, uint32_t skip)
+{
+    struct hum_step *h = &hum[trk_index(t)];
+    if (h->pend)                                    /* (a tempo change: never two steps waiting) */
+        hum_late(t, h);
+    if (h->early)
+        h->early = 0;
+    else if (h->next <= 0)
+        seq_step(t, s, arg, skip);
+    else if (seq_roll(t, s)) {
+        h->pend = 1;
+        h->wait = (uint32_t)h->next;
+        h->idx = (uint8_t)t->seq_idx;
+        h->skip = skip;
+        h->arg = arg;
+        h->s16 = (uint8_t)hum_s16(h->tick);
+    }
+    h->next = hum_shift(t, swing_step_len(t, period, 1u));
+}
+
+/* HUM, once a block (after the clock moved n): a late step waiting plays when its offset is over; the next step plays
+ * early when its offset says so. Not early while the track records or erases, before a pattern change at the loop
+ * (its steps are not known yet), nor for a step with chance (it rolls on the grid) */
+static void hum_tick(track_t *t, uint32_t n, uint32_t period, uint32_t len)
+{
+    struct hum_step *h = &hum[trk_index(t)];
+    uint32_t cur, nidx;
+    const step_t *s;
+    if (h->pend && h->wait <= n)
+        hum_late(t, h);
+    else if (h->pend)
+        h->wait -= n;
+    if (h->next >= 0 || h->early || t->seq_pos >= 0x7FFFFFFFu || rec_on(t) || seq_erase_active(t))
+        return;
+    cur = step_samples(t, period, t->seq_idx);
+    if (t->seq_pos >= cur || t->seq_pos + (uint32_t)-h->next < cur)
+        return;                                     /* (the step starts in this block: on the grid) */
+    nidx = (t->seq_idx + 1u) % len;
+    s = &seq_steps(t)[nidx];
+    if (step_chance(s) < 100u || (!nidx && (chain.running || t->pattern_next < NPAT)))
+        return;
+    motion_step(t, nidx, &motion);                  /* (again at the step: it sets values) */
+    seq_play(t, s, step_gate(s) ? step_samples(t, period, nidx) : period, 0, nidx,
+             hum_s16(h->tick + hum_ticks(period)));
+    h->early = 1;
+}
+
 static void seq_grid_tick(track_t *t, uint32_t n)
 {
     uint32_t period, len;
@@ -952,10 +1030,12 @@ static void seq_grid_tick(track_t *t, uint32_t n)
     period = seq_div_samples((uint32_t)t->p[P_SDIV]);
     len = (uint32_t)t->p[P_SLEN];
     t->seq_pos += n;
+    hum_tick(t, n, period, len ? len : 1u);
     for (;;) {
         uint32_t cur_len = step_samples(t, period, t->seq_idx);
         if (t->seq_pos < cur_len && t->seq_pos != 0x7FFFFFFFu + n)
             break;
+        hum[trk_index(t)].tick = t->seq_pos >= 0x7FFFFFFFu ? 0u : hum[trk_index(t)].tick + hum_ticks(period);
         t->seq_pos = t->seq_pos >= 0x7FFFFFFFu ? (chain.running ? chain.carry : 0u) : t->seq_pos - cur_len;
         t->seq_idx = (uint16_t)((t->seq_idx + 1u) % (len ? len : 1u));
         if (!t->seq_idx && !chain.running && t->pattern_next < NPAT) {
@@ -984,7 +1064,7 @@ static void seq_grid_tick(track_t *t, uint32_t n)
                 }
                 t->rskip_n = 0;
             }
-            seq_step(t, s, step_gate(s) ? step_samples(t, period, t->seq_idx) : period, skip);
+            hum_enter(t, s, period, step_gate(s) ? step_samples(t, period, t->seq_idx) : period, skip);
         }
     }
 }
